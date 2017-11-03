@@ -226,7 +226,7 @@ class AudioRecorderManager extends ReactContextBaseJavaModule {
       timer = null;
     }
   }
-  
+
   private void sendEvent(String eventName, Object params) {
     getReactApplicationContext()
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
@@ -236,6 +236,34 @@ class AudioRecorderManager extends ReactContextBaseJavaModule {
   private void logAndRejectPromise(Promise promise, String errorCode, String errorMessage) {
     Log.e(TAG, errorMessage);
     promise.reject(errorCode, errorMessage);
+  }
+
+  private void startTimer(){
+    stopTimer();
+    timer = new Timer();
+    timer.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        WritableMap body = Arguments.createMap();
+        body.putInt("currentTime", recorderSecondsElapsed);
+        sendEvent("recordingProgress", body);
+        recorderSecondsElapsed++;
+        AudioRecorderManager.this.getReactApplicationContext().runOnNativeModulesQueueThread(new Runnable() {
+          @Override
+           public void run() {
+                       recorderSecondsElapsed++;
+                        WritableMap body = Arguments.createMap();
+                        body.putInt("currentTime", recorderSecondsElapsed/4);
+                        int maxAmplitude = 0;
+                        if (recorder != null) {
+                            maxAmplitude = recorder.getMaxAmplitude();
+                          }
+                       body.putInt("currentMetering", maxAmplitude);
+                        sendEvent("recordingProgress", body);
+                      }
+         });
+      }
+    }, 0, 100);
   }
 
 }
